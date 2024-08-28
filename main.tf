@@ -1,6 +1,6 @@
 locals {
-  scaling_group_id = var.scaling_group_id != "" ? var.scaling_group_id : concat(alicloud_ess_scaling_group.scaling_group.*.id, [""])[0]
-  server_group_id  = var.server_group_id != "" ? var.server_group_id : concat(alicloud_alb_server_group.alb_server_group.*.id, [""])[0]
+  scaling_group_id = var.scaling_group_id != "" ? var.scaling_group_id : concat(alicloud_ess_scaling_group.scaling_group[*].id, [""])[0]
+  server_group_id  = var.server_group_id != "" ? var.server_group_id : concat(alicloud_alb_server_group.alb_server_group[*].id, [""])[0]
 }
 
 resource "alicloud_ess_scaling_group" "scaling_group" {
@@ -64,7 +64,7 @@ resource "alicloud_alb_server_group" "alb_server_group" {
   resource_group_id = var.resource_group_id
 
   health_check_config {
-    health_check_connect_port = lookup(var.health_check_config, "health_check_connect_port", 80)
+    health_check_connect_port = lookup(var.health_check_config, "health_check_connect_port", 0)
     health_check_enabled      = lookup(var.health_check_config, "health_check_enabled", "false")
     health_check_host         = lookup(var.health_check_config, "health_check_host", "")
     health_check_http_version = lookup(var.health_check_config, "health_check_http_version", "HTTP1.1")
@@ -79,10 +79,15 @@ resource "alicloud_alb_server_group" "alb_server_group" {
 
   sticky_session_config {
     sticky_session_enabled = lookup(var.sticky_session_config, "sticky_session_enabled", "false")
-    cookie                 = lookup(var.sticky_session_config, "cookie", "")
-    sticky_session_type    = lookup(var.sticky_session_config, "sticky_session_type", "Server")
+    cookie                 = lookup(var.sticky_session_config, "cookie", null)
+    cookie_timeout         = lookup(var.sticky_session_config, "cookie_timeout", 1000)
+    sticky_session_type    = lookup(var.sticky_session_config, "sticky_session_type", "Insert")
   }
   tags = var.tags
+
+  lifecycle {
+    ignore_changes = [servers]
+  }
 }
 
 resource "alicloud_alb_acl" "alb_acl" {
@@ -93,7 +98,7 @@ resource "alicloud_alb_acl" "alb_acl" {
 
 resource "alicloud_alb_listener" "alb_listener" {
   count                = var.create_listener ? 1 : 0
-  load_balancer_id     = alicloud_alb_load_balancer.balancer.0.id
+  load_balancer_id     = alicloud_alb_load_balancer.balancer[0].id
   listener_protocol    = var.listener_protocol
   listener_port        = var.listener_port
   listener_description = var.listener_description
@@ -105,13 +110,14 @@ resource "alicloud_alb_listener" "alb_listener" {
       }
     }
   }
-  acl_config {
-    acl_type = var.acl_type
-    acl_relations {
-      acl_id = alicloud_alb_acl.alb_acl.0.id
-    }
-  }
 }
+
+resource "alicloud_alb_listener_acl_attachment" "alb_acl_attachment" {
+  acl_id      = alicloud_alb_acl.alb_acl[0].id
+  listener_id = alicloud_alb_listener.alb_listener[0].id
+  acl_type    = var.acl_type
+}
+
 
 resource "alicloud_ess_scaling_configuration" "ess_config" {
   count             = var.create_scaling_configuration ? 1 : 0
