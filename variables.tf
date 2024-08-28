@@ -170,7 +170,7 @@ variable "listener_protocol" {
 variable "launch_template_version" {
   type        = string
   description = "The version number of the launch template. Valid values are the version number, Latest, or Default, Default value: Default."
-  default     = "Default"
+  default     = null
 }
 
 #alicloud_alb_load_balancer

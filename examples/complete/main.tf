@@ -1,6 +1,9 @@
+provider "alicloud" {
+  region = "cn-shanghai"
+}
 data "alicloud_alb_zones" "default" {}
 data "alicloud_images" "default" {
-  name_regex  = "^centos.*_64"
+  name_regex  = "^ubuntu_18.*64"
   most_recent = true
   owners      = "system"
 }
@@ -9,7 +12,7 @@ data "alicloud_zones" "default" {
   available_resource_creation = "VSwitch"
 }
 data "alicloud_instance_types" "default" {
-  availability_zone = data.alicloud_zones.default.zones[0].id
+  availability_zone = data.alicloud_zones.default.zones[3].id
 }
 resource "random_integer" "rand" {
   min = 1
@@ -24,14 +27,14 @@ resource "alicloud_vpc" "default" {
 resource "alicloud_vswitch" "vswitch_1" {
   vpc_id       = alicloud_vpc.default.id
   cidr_block   = cidrsubnet(alicloud_vpc.default.cidr_block, 8, 2)
-  zone_id      = data.alicloud_alb_zones.default.zones.0.id
+  zone_id      = data.alicloud_alb_zones.default.zones.3.id
   vswitch_name = var.vswitch_name_1
 }
 
 resource "alicloud_vswitch" "vswitch_2" {
   vpc_id       = alicloud_vpc.default.id
   cidr_block   = cidrsubnet(alicloud_vpc.default.cidr_block, 8, 4)
-  zone_id      = data.alicloud_alb_zones.default.zones.1.id
+  zone_id      = data.alicloud_alb_zones.default.zones.4.id
   vswitch_name = var.vswitch_name_2
 }
 
@@ -42,13 +45,13 @@ resource "alicloud_security_group" "default" {
 
 
 resource "alicloud_log_project" "default" {
-  name        = "${var.log_project_name}-${random_integer.rand.result}"
-  description = "created by terraform"
+  project_name = "${var.log_project_name}-${random_integer.rand.result}"
+  description  = "created by terraform"
 }
 
 resource "alicloud_log_store" "default" {
-  project               = alicloud_log_project.default.name
-  name                  = "${var.log_store_name}-${random_integer.rand.result}"
+  project_name          = alicloud_log_project.default.project_name
+  logstore_name         = "${var.log_store_name}-${random_integer.rand.result}"
   shard_count           = 3
   auto_split            = true
   max_split_shard_count = 60
@@ -78,11 +81,11 @@ module "ess-alb" {
   load_balancer_name     = var.load_balancer_name
   load_balancer_edition  = "Basic"
   zone_mappings = [
-    { vswitch_id = alicloud_vswitch.vswitch_1.id, zone_id = data.alicloud_alb_zones.default.zones.0.id },
-    { vswitch_id = alicloud_vswitch.vswitch_2.id, zone_id = data.alicloud_alb_zones.default.zones.1.id }
+    { vswitch_id = alicloud_vswitch.vswitch_1.id, zone_id = alicloud_vswitch.vswitch_1.zone_id },
+    { vswitch_id = alicloud_vswitch.vswitch_2.id, zone_id = alicloud_vswitch.vswitch_2.zone_id }
   ]
   access_log_config = [
-    { log_project = alicloud_log_project.default.name, log_store = alicloud_log_store.default.name }
+    { log_project = alicloud_log_project.default.project_name, log_store = alicloud_log_store.default.logstore_name }
   ]
   acl_name             = var.acl_name
   server_group_name    = var.server_group_name
