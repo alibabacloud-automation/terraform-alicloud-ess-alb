@@ -1,4 +1,8 @@
-## 1.2.0 (Unreleased)
+## 1.3.0 (Unreleased)
+## 1.2.0 (February 11, 2025)
+
+- module: improve default value [GH-3](https://github.com/alibabacloud-automation/terraform-alicloud-ess-alb/pull/3)
+
 ## 1.1.0 (August 28, 2024)
 
 - module: support resource alicloud_alb_listener_acl_attachment; example/complete: improve the examples [GH-2](https://github.com/alibabacloud-automation/terraform-alicloud-ess-alb/pull/2)
